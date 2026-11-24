@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Communication Assistant</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1a73e8">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--blue:#1a73e8;--red:#d93025;--amber:#f29900;--green:#188038;--ink:#202124;--mute:#5f6368;--line:#dadce0;--soft:#f1f3f4;--r:16px}
+*{box-sizing:border-box}html,body{margin:0;overscroll-behavior-y:none}body{overflow-x:hidden;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+body{font:15px/1.5 "Google Sans",Roboto,"Segoe UI",system-ui,sans-serif;color:var(--ink);background:#fff;padding:env(safe-area-inset-top) 0 0}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid #8ab4f8;outline-offset:2px}
+#login{min-height:100vh;display:grid;place-content:center;gap:14px;text-align:center;padding:24px}
+#login h1{font-size:28px;margin:0}#login p{margin:0;color:var(--mute);max-width:34ch}
+.primary{background:var(--blue);color:#fff;border:0;border-radius:999px;padding:12px 24px;font-weight:600;cursor:pointer}
+.err{color:var(--red);min-height:1.4em}
+#app{display:grid;grid-template-rows:auto 1fr;grid-template-columns:minmax(0,1fr);min-height:100vh}
+header{display:flex;gap:12px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:5}
+header h1{font-size:18px;margin:0;white-space:nowrap}
+#q{flex:1;min-width:0;border:0;background:var(--soft);border-radius:999px;padding:10px 18px}
+#out,#bell{background:none;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;white-space:nowrap}
+.shell{display:grid;grid-template-columns:200px 1fr}
+nav{padding:12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:61px;align-self:start}
+nav button{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;border:0;background:none;border-radius:999px;padding:10px 16px;cursor:pointer}
+nav button[aria-current=true]{background:#e8f0fe;color:#174ea6;font-weight:600}
+nav b{background:var(--red);color:#fff;border-radius:999px;font-size:12px;padding:0 8px}
+main{padding:20px;max-width:820px;width:100%}
+h2{font-size:22px;margin:0 0 14px}h3{font-size:16px;margin:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:22px}
+.stat{background:var(--soft);border-radius:var(--r);padding:14px 16px}.stat strong{display:block;font-size:26px;line-height:1.1}.stat span{color:var(--mute);font-size:13px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+select{border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:#fff}
+.card{border:1px solid var(--line);border-left:6px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
+.card.Urgent{border-left-color:var(--red)}.card.Important{border-left-color:var(--amber)}.card.Normal{border-left-color:var(--blue)}.card.Low{border-left-color:#9aa0a6}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.tag{font-size:12px;border-radius:999px;padding:1px 10px;background:var(--soft);color:var(--mute)}
+.tag.act{background:#fce8e6;color:#a50e0e;font-weight:600}.tag.me{background:#e6f4ea;color:var(--green);font-weight:600}
+.meta{color:var(--mute);font-size:13px;margin:2px 0 8px;overflow-wrap:anywhere}
+.sum{white-space:pre-line;margin:0 0 8px}.due{font-weight:600;margin:0 0 8px}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:4px 12px;text-decoration:none;color:var(--blue);font-size:14px}
+.chip.open{background:var(--blue);color:#fff;border-color:var(--blue)}
+.empty{color:var(--mute);padding:28px 0}
+main,.card{min-width:0}h3,.sum,.meta,.chip{overflow-wrap:anywhere}
+@media(max-width:860px){
+ #bell{padding:8px 10px;font-size:13px}
+ .shell{grid-template-columns:minmax(0,1fr)}
+ nav{position:fixed;bottom:0;left:0;right:0;top:auto;flex-direction:row;justify-content:space-around;background:#fff;border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:6}
+ nav button{padding:8px 10px;font-size:13px}
+ main{padding:16px 14px 90px}header{flex-wrap:wrap;padding:10px 14px}header h1{flex:1}#q{order:3;flex:1 1 100%}
+}
+@media(prefers-reduced-motion:no-preference){.card{transition:box-shadow .15s}.card:hover{box-shadow:0 1px 6px rgba(60,64,67,.25)}}
+</style>
+</head>
+<body>
+<section id="login" hidden>
+  <h1>Communication Assistant</h1>
+  <p>Your emails and Google Chat, summarized in simple English.</p>
+  <button class="primary" id="signin">Sign in with Google</button>
+  <div class="err" id="loginErr" role="alert"></div>
+</section>
+<div id="app" hidden>
+  <header><h1>Assistant</h1><input id="q" type="search" placeholder="Search sender, subject or summary" aria-label="Search"><button id="bell">Turn on notifications</button><button id="out">Sign out</button></header>
+  <div class="shell"><nav id="nav" aria-label="Sections"></nav><main id="main"></main></div>
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, collection, query, orderBy, limit, onSnapshot, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getMessaging, getToken, onMessage, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+import { firebaseConfig, vapidKey } from "./firebase-config.js";
+
+const $ = id => document.getElementById(id);
+const app = initializeApp(firebaseConfig), auth = getAuth(app);
+const db = initializeFirestore(app, { localCache: persistentLocalCache() });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+// Safe DOM builder: text is always inserted as text, never as HTML.
+function h(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+  }
+  kids.flat().forEach(c => c != null && e.append(c));
+  return e;
+}
+const httpsUrl = u => { try { const x = new URL(u); return x.protocol === "https:" ? x.href : null; } catch { return null; } };
+const when = d => d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+const RANK = { Urgent: 0, Important: 1, Normal: 2, Low: 3 };
+const NAV = [["overview", "Overview"], ["emails", "Emails"], ["chat", "Google Chat"], ["action", "Action Required"]];
+
+let items = [], view = "overview", pri = "", sort = "new", unsub = null, loadErr = "";
+const time = i => (i.time && i.time.toDate) ? i.time.toDate() : new Date(0);
+const needsAction = i => i.actionRequired === true || i.priority === "Urgent";
+
+function link(label, href, cls = "chip") {
+  const u = httpsUrl(href);
+  return u ? h("a", { class: cls, href: u, target: "_blank", rel: "noopener noreferrer", text: label }) : null;
+}
+const gmailUrl = u => { const m = /[?&]th=([0-9a-f]+)/i.exec(u || "") || /#[a-z]+\/([0-9a-f]+)/i.exec(u || ""); return m ? "https://mail.google.com/mail/?authuser=langoljam.s26204@nst.rishihood.edu.in#all/" + m[1] : u; };
+function card(i) {
+  const isChat = i.source === "chat";
+  return h("article", { class: "card " + (i.priority || "Normal") },
+    h("div", { class: "row" },
+      h("span", { class: "tag", text: isChat ? "Google Chat" : "Gmail" }),
+      h("span", { class: "tag", text: i.priority || "Normal" }),
+      i.actionRequired ? h("span", { class: "tag act", text: "Action required" }) : null,
+      i.addressedToMe ? h("span", { class: "tag me", text: "For you" }) : null),
+    h("h3", { text: i.title || "(no title)" }),
+    h("div", { class: "meta", text: (i.sender || "Unknown") + " · " + when(time(i)) }),
+    i.summary ? h("p", { class: "sum", text: i.summary }) : null,
+    i.deadline ? h("p", { class: "due", text: "Deadline: " + i.deadline }) : null,
+    h("div", { class: "links" },
+      (i.links || []).map(l => link(l.label || "Open link", l.url)),
+      (i.attachments || []).map(a => link("File: " + (a.name || "attachment"), a.url)),
+      link(isChat ? "Open in Chat" : "Open in Gmail", isChat ? i.url : gmailUrl(i.url), "chip open")));
+}
+
+function matches(i, q) {
+  return !q || [i.title, i.sender, i.summary, i.spaceName].some(s => (s || "").toLowerCase().includes(q));
+}
+function ordered(list) {
+  return [...list].sort(sort === "urgent"
+    ? (a, b) => (RANK[a.priority] ?? 2) - (RANK[b.priority] ?? 2) || time(b) - time(a)
+    : (a, b) => time(b) - time(a));
+}
+function filters() {
+  const mk = (val, opts, set) => h("select", { onchange: e => { set(e.target.value); render(); }, "aria-label": "Filter" },
+    opts.map(([v, t]) => { const o = h("option", { value: v, text: t }); if (v === val) o.selected = true; return o; }));
+  return h("div", { class: "bar" },
+    mk(pri, [["", "All priorities"], ["Urgent", "Urgent"], ["Important", "Important"], ["Normal", "Normal"], ["Low", "Low priority"]], v => pri = v),
+    mk(sort, [["new", "Newest first"], ["urgent", "Most urgent first"]], v => sort = v));
+}
+function list(title, arr, hint) {
+  const q = $("q").value.trim().toLowerCase();
+  const rows = ordered(arr.filter(i => matches(i, q) && (!pri || i.priority === pri)));
+  return [h("h2", { text: title }), filters(),
+    rows.length ? rows.map(card) : h("p", { class: "empty", text: q || pri ? "Nothing matches your search or filter." : hint })];
+}
+
+function render() {
+  const q = $("q").value.trim().toLowerCase(), main = $("main");
+  const add = (...n) => main.append(...n.flat(Infinity).filter(x => x != null && x !== false));
+  const act = items.filter(needsAction);
+  $("nav").replaceChildren(...NAV.map(([k, t]) => h("button", { "aria-current": String(view === k), onclick: () => { view = k; render(); } },
+    t, k === "action" && act.length ? h("b", { text: act.length }) : null)));
+  main.replaceChildren();
+  if (loadErr) { add(h("p", { class: "err", text: loadErr })); return; }
+  if (q && view === "overview") { add(...list("Search results", items, "")); return; }
+  if (view === "overview") {
+    const emails = items.filter(i => i.source === "gmail"), chats = items.filter(i => i.source === "chat");
+    const stat = (n, t) => h("div", { class: "stat" }, h("strong", { text: n }), h("span", { text: t }));
+    add(h("h2", { text: "Overview" }),
+      h("div", { class: "stats" }, stat(emails.length, "Emails summarized"), stat(chats.length, "Chat messages summarized"),
+        stat(act.length, "Need your action"), stat(items.filter(i => i.priority === "Urgent").length, "Urgent")),
+      h("h2", { text: "Needs you first" }),
+      act.length ? ordered(act).sort((a, b) => (RANK[a.priority] ?? 2) - (RANK[b.priority] ?? 2)).slice(0, 5).map(card)
+        : h("p", { class: "empty", text: "Nothing needs your action right now." }),
+      h("h2", { text: "Latest" }), items.slice(0, 5).map(card));
+  } else if (view === "emails") add(...list("Emails", items.filter(i => i.source === "gmail"), "No summarized emails yet. New ones appear within about 10 minutes."));
+  else if (view === "chat") add(...list("Google Chat", items.filter(i => i.source === "chat"), "No Chat messages yet. Tick Spaces in the Chat_Spaces sheet to start."));
+  else add(...list("Action required", act, "Nothing needs your action right now."));
+}
+
+function start() {
+  if (unsub) return;
+  unsub = onSnapshot(query(collection(db, "items"), orderBy("time", "desc"), limit(300)),
+    snap => { loadErr = ""; items = snap.docs.map(d => ({ id: d.id, ...d.data() })); render(); },
+    err => { loadErr = err.code === "permission-denied"
+      ? "This Google account is not allowed to read this data. Sign out and use your university account."
+      : "Could not load your messages: " + err.message; render(); });
+}
+
+let pushOn = false;
+async function enablePush(silent) {
+  const btn = $("bell");
+  try {
+    if (typeof Notification === "undefined" || !(await isSupported())) throw new Error("This browser can't receive push notifications.");
+    if (!vapidKey || vapidKey.startsWith("PASTE")) throw new Error("Add your Web Push key to firebase-config.js first.");
+    if (Notification.permission !== "granted" && silent) return;
+    if ((await Notification.requestPermission()) !== "granted") throw new Error("Notifications are blocked. Allow them in this site's browser settings.");
+    const reg = await navigator.serviceWorker.ready, messaging = getMessaging(app);
+    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
+    if (!token) throw new Error("No notification token was received.");
+    await setDoc(doc(db, "devices", token), { token, device: /Android/.test(navigator.userAgent) ? "Android phone" : /Mac/.test(navigator.userAgent) ? "Mac" : "Other", updatedAt: serverTimestamp() });
+    if (!pushOn) { pushOn = true; onMessage(messaging, p => { const d = p.data || {}; reg.showNotification(d.title || "New message", { body: d.body, icon: "icon-192.png", tag: d.tag, data: { url: d.url } }); }); }
+    btn.textContent = "Notifications on"; btn.disabled = true;
+  } catch (e) { if (!silent) alert(e.message); }
+}
+$("bell").addEventListener("click", () => enablePush(false));
+$("q").addEventListener("input", () => { if (view === "overview" && !$("q").value) render(); else render(); });
+$("out").addEventListener("click", () => signOut(auth));
+$("signin").addEventListener("click", async () => {
+  $("loginErr").textContent = "";
+  const p = new GoogleAuthProvider(); p.setCustomParameters({ prompt: "select_account" });
+  try { await signInWithPopup(auth, p); }
+  catch (e) { $("loginErr").textContent = e.code === "auth/api-key-not-valid" || /api-key/.test(e.code || "")
+    ? "The Firebase API key in firebase-config.js is wrong. Copy it again from the Firebase console."
+    : "Sign-in failed: " + (e.code || e.message); }
+});
+onAuthStateChanged(auth, u => {
+  $("login").hidden = !!u; $("app").hidden = !u;
+  if (u) { start(); enablePush(true); } else { if (unsub) unsub(); unsub = null; items = []; }
+});
+</script>
+</body>
+</html>
